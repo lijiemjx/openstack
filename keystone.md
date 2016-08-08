@@ -6,6 +6,8 @@
 Keystone(OpenStack Identity Service)是OpenStack框架中的身份管理服务（Identity service），负责管理身份验证、资源服务目录、基于用户角色的访问控制和服务令牌管理功能。
 Keystone的作用类似一个服务总线，Nova、Glance、Horizon、Swift、Cinder、Neutron等服务都需要通过Keystone来注册其服务的Endpoint（可理解为服务的访问点或者URL），针对这些服务的任何调用都需要经过Keystone的身份认证，并获得服务的Endpoint来进行访问。	
 
+![](images/keysone.jpg)
+
 - 用户身份验证
     - 用户身份信息管理和存储
     - 管理用户相关的 project、role、group 和 domain等
