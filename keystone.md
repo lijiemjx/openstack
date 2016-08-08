@@ -274,72 +274,116 @@ b. provider生成的方法fernet|pkiz|pki|uuid。
 	UUID：uuid.uuid4().hex
 	PKI：token_id = str(cms.cms_sign_token(jsonutils.dumps(token_data), CONF.signing.certfile,CONF.signing.keyfile))
 	PKIZ：token_id = str(cms.pkiz_sign(jsonutils.dumps(token_data),CONF.signing.certfile,CONF.signing.keyfile))
-	从中可见：
+
+	Fernet:        
+    token =self.pack( msgpack.packb( (version,) + TrustScopedPayload.assemble(
+            user_id,
+            methods,
+            project_id,
+            expires_at,
+            audit_ids,
+            trust_id)))
 
 	UUDI 的 token id 只是一个纯粹的32位十六进制字符串
 	PKI （Public Key Infrastructure） 的 token id 是使用 cert file 和 key file 对 token data 加密的结果
-	PKIZ 的 token id 是使用 pkiz_sign 函数，使用 cert file 和 key file 对 token data 加密的结果。从下面的 code 可以看出，pkiz 生成的 token id 其实就是使用 zlib 对 PKI 生成的 token id 进行压缩，然后加上 PKIZ_ 前缀而已。其原因应该是 PKI 的 token id 太长了。供结果估计，PKIZ 能压缩 PKI 一半左右，感觉这压缩率也不高。
+	PKIZ 的 token id 是使用 pkiz_sign 函数，使用 cert file 和 key file 对 token data 加密的结果。从下面的 code 可以看出，pkiz 生成的 token id 其实就是使用 zlib 对 PKI 生成的 token id 进行压缩，然后加上 PKIZ_ 前缀而已。其原因应该是 PKI 的 token id 太长了。供结果估计，PKIZ 能压缩 PKI,但是只有80%左右，感觉这压缩率也不高。
+	Fernet 是专为 API token 设计的一种轻量级安全消息格式，不需要存储于数据库，减少了磁盘的 IO，带来了一定的性能提升 。为了提高安全性，需要采用 Key Rotation 更换密钥。
 
 uuid方式：
 
-![PNG](images/UUID-token-validation-flow-3.png)
+![PNG](images/token.png)
 
 
-PKI方式:
+PKI/ PKIZ/ Fernet方式:
 
-![PNG](images/PKI-token-validation-flow-1.png)
+![PNG](images/pki.png)
 
 比较各种方式的优缺点：
 
-<table border="1" cellspacing="1" cellpadding="1" align="center">
-<tbody>
-<tr>
-<td>
-<h3><span >Provider</span></h3>
-</td>
-<td>
-<h3><span >生成方式</span></h3>
-</td>
-<td>长度</td><td>加密方式</td>
-<td>
-<h3><span >优点</span></h3>
-</td>
-<td>
-<h3><span>缺点</span></h3>
-</td>
-</tr>
-<tr>
-<td>UUID</td>
-<td>
-uuid.uuid4().hex没有加密方式。
-</td>
-<td>32字符</td><td>未加密</td>
-<td>生成的Token，长度较短，使用方便。url使用方便，回收的方式，就是从后端删除即可，实现逻辑较为清晰。</td>
-<td>需要持久化后端存储，每次访问需要keystone相关服务进行认证。</td>
-</tr>
-<tr>
-<td>PKI</td>
-<td>cms_sign_data（），使用base64 encoded进行编码（替换不安全的字符），。</td>
-<td>粗略统计过长度4602字符，使用</td><td>Cryptographic Message Syntax (CMS)进行加密（默认的方式sha256）</td>
-<td>使用证书及私钥生成，可以线下验证（不需要走keystone认证服务），</td>
-<td>长度负载重，不推荐用于生产部署<span style="color:rgb(62,67,73); font-family:Arial,sans-serif; font-size:14px; line-height:21.599998474121094px">&nbsp;：</span><tt class="docutils literal" style="color:rgb(34,34,34); font-size:1.1em; line-height:21.599998474121094px; background-color:rgb(236,240,243)"><span class="pre">keystone-manage</span>&nbsp;<span class="pre">pki_setup</span></tt><span style="color:rgb(62,67,73); font-family:Arial,sans-serif; font-size:14px; line-height:21.599998474121094px">&nbsp;</span>，需要使用由一个受信任的CA颁发的证书</td>
-</tr>
-<tr>
-<td>PKIZ</td>
-<td>同PKI，使用base64url encoding进行编码，在此基础上，使用压缩机制，长度上减小了一半，并且Token使用PKIZ_开头。</td>
-<td>2301字符</td><td>Cryptographic Message Syntax (CMS)进行加密（默认的方式sha256）</td>
-<td>较PKI长度上缩小了很多，</td>
-<td>长度负载较重，同上PKI</td>
-</tr>
-<tr>
-<td>Fernet</td>
-<td>MessagePacked负载数据，并使用crypto.encrypt(payload)加密。</td>
-<td>粗略统计长度183字符</td><td>使用对称加密</td>
-<td>设计的逻辑，引入序列化，负载&#26684;式加以控制，基于此进行加密，长度比PKI（Z）要短。</td>
-<td>对称加密算法，安全性低</td>
-</tr>
-</tbody>
-</table>
+<table> 
+  <thead> 
+   <tr> 
+    <th width="29%">Token 类型</th> 
+    <th width="15%">UUID</th> 
+    <th width="18%">PKI</th> 
+    <th width="19%">PKIZ</th> 
+    <th width="19%">Fernet</th> 
+   </tr> 
+  </thead> 
+  <tbody> 
+   <tr> 
+    <td>大小</td> 
+    <td>32 Byte</td> 
+    <td>KB 级别</td> 
+    <td>KB 级别</td> 
+    <td>约 255 Byte</td> 
+   </tr> 
+   <tr> 
+    <td>支持本地认证</td> 
+    <td>不支持</td> 
+    <td>支持</td> 
+    <td>支持</td> 
+    <td>不支持</td> 
+   </tr> 
+   <tr> 
+    <td>Keystone 负载</td> 
+    <td>大</td> 
+    <td>小</td> 
+    <td>小</td> 
+    <td>大</td> 
+   </tr> 
+   <tr> 
+    <td>存储于数据库</td> 
+    <td>是</td> 
+    <td>是</td> 
+    <td>是</td> 
+    <td>否</td> 
+   </tr> 
+   <tr> 
+    <td>携带信息</td> 
+    <td>无</td> 
+    <td>user, catalog 等</td> 
+    <td>user, catalog 等</td> 
+    <td>user 等</td> 
+   </tr> 
+   <tr> 
+    <td>涉及加密方式</td> 
+    <td>无</td> 
+    <td>非对称加密</td> 
+    <td>非对称加密</td> 
+    <td>对称加密(AES)</td> 
+   </tr> 
+   <tr> 
+    <td>是否压缩</td> 
+    <td>否</td> 
+    <td>否</td> 
+    <td>是</td> 
+    <td>否</td> 
+   </tr> 
+   <tr> 
+    <td>版本支持</td> 
+    <td>D</td> 
+    <td>G</td> 
+    <td>J</td> 
+    <td>K</td> 
+   </tr> 
+   <tr> 
+    <td>优点</td> 
+    <td>生成的Token，长度较短，使用方便。url使用方便，回收的方式，就是从后端删除即可，实现逻辑较为清晰。</td> 
+    <td>使用证书及私钥生成，可以线下验证（不需要走keystone认证服务）</td> 
+    <td>较PKI长度上缩小了很多</td> 
+    <td>设计的逻辑，引入序列化，负载格式加以控制，基于此进行加密，长度比PKI、PKIZ要短。</td> 
+   </tr> 
+   <tr> 
+    <td>缺点</td> 
+    <td>需要持久化后端存储，每次访问需要keystone相关服务进行认证。</td> 
+    <td>长度负载重，不推荐用于生产部署，经常由于长度超长引起错误。</td> 
+    <td>长度负载较重，同上PKI</td> 
+    <td>对称加密算法，安全性低，需要周期性更换秘钥</td> 
+   </tr> 
+  </tbody> 
+ </table> 
+Token 类型的选择涉及多个因素，包括 Keystone server 的负载、region 数量、安全因素、维护成本以及 token 本身的成熟度。region 的数量影响 PKI/PKIZ token 的大小，从安全的角度上看，UUID 无需维护密钥，PKI 需要妥善保管 Keystone server 上的私钥，Fernet 需要周期性的更换密钥。
 
 （5）配置
 
@@ -424,7 +468,7 @@ def get_services(self, context):
 
 其中，protected 和 filterprotected 在 /keystone/common/controller.py 中实现。
 
-protected/filterprotected 最终会调用 /keystone/openstack/common/policy.py 中的 enforce 方法，具体见 2.3.2 （2）中的描述。keystone 与 openstack 其它component 中的 RBAC 实现的不同之处在于 keystone 中有时候需要做 token 验证再做 policy 检查。
+protected/filterprotected 最终会调用 /keystone/openstack/common/policy.py 中的 enforce 方法。keystone 与 openstack 其它component 中的 RBAC 实现的不同之处在于 keystone 中有时候需要做 token 验证再做 policy 检查，而其他的component只需要做policy检查。
 
 4.4.3 新增role
 
@@ -436,15 +480,15 @@ protected/filterprotected 最终会调用 /keystone/openstack/common/policy.py �
 	
 ##5、	Keystone的实际应用
 
-###5.1 identity service && policy provider
+###5.1 身份认证和权限控制
 
 	keystone实现用户身份验证和权限控制两个功能。
 	
-##5.2 policy provider
+###5.2 只提供权限控制，身份认证集成sso。
 
 keystone只提供权限控制，身份验证的功能通过其他身份验证系统来实现。
 
-	LDAP管理 Idenity (users, groups, and group memberships)
+例如：LDAP管理 Idenity (users, groups, and group memberships)，
 	Keystone采用SQL管理Assignment (roles, tenants, domains).
   
    ![PNG](images/out_identity.png)
@@ -454,7 +498,7 @@ keystone只提供权限控制，身份验证的功能通过其他身份验证系
       2)、公司认证系统认证通过后，返回访问凭证（通常是访问token）、用户名。
  
       3)、openstack控制台通过http协议将第二步收到的访问token和用户名通过keystone提供的认证接口发给keystone，发送的http请求大致如下：
-        POST http://172.19.106.242:5000/v2.0/tokens
+        POST http://192.168.0.1:5000/v3/tokens
         REMOTE_USER:  用户名
         EXTERNAL_ACCESS_TOKEN: 访问token
         Accept: application/json
@@ -471,20 +515,12 @@ keystone只提供权限控制，身份验证的功能通过其他身份验证系
     5)、返回keystone unscoped token给控制台。
 
 
-##背景知识：
--  Restful && Endpoint
-   Restful: Representational State Transfer，
-   Endpoint
--  WSGI
--  Oslo
-   openstack 的通用库，可以像使用第三方库一样直接import使用
-   主要包含以下几个模块：
-   oslo.config：用于解析命令行和配置文件中的配置项。
 
 
 
 
-##附录：
+
+##参考文献：
 
 -  paste deployment http://pythonpaste.org/deploy/
 
