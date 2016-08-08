@@ -302,7 +302,7 @@ uuid方式：
 
 PKI/ PKIZ/ Fernet方式:
 
-![PNG](images/pki.png)
+![PNG](images/PKI.png)
 
 比较各种方式的优缺点：
 
@@ -457,7 +457,8 @@ Token 类型的选择涉及多个因素，包括 Keystone server 的负载、reg
 
 4.4.2 实现
 
-Keystone 在每个子模块的 controller.py 文件中的各个控制类的方法上实施 RBAC。有几种方法，比如：
+Keystone 在每个子模块的 controller.py 文件中的各个控制类的方法上实施 RBAC。
+通过注解来实现，如：
 
 @controller.protected()
 def create_region(self, context, region)
@@ -473,6 +474,12 @@ def get_services(self, context):
     return {'OS-KSADM:services': service_list}
 
 其中，protected 和 filterprotected 在 /keystone/common/controller.py 中实现。
+
+例如：protected中：
+
+	 def inner(self, context, *args, **kwargs):
+	            if 'is_admin' in context and context['is_admin']:
+	                LOG.warning(_LW('RBAC: Bypassing authorization'))
 
 protected/filterprotected 最终会调用 /keystone/openstack/common/policy.py 中的 enforce 方法。keystone 与 openstack 其它component 中的 RBAC 实现的不同之处在于 keystone 中有时候需要做 token 验证再做 policy 检查，而其他的component只需要做policy检查。
 
