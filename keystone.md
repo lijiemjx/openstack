@@ -54,9 +54,10 @@ Keystone的作用类似一个服务总线，Nova、Glance、Horizon、Swift、Ci
 （10）Service 服务：一个 OpenStack 服务，比如Nova、Swift或者Glance等。每个服务提供一个或者多个 endpoint 供用户访问资源以及进行操作。
 
 （11）Endpoint 端点：一个网络可访问的服务地址，通过它你可以访问一个服务，通常是个 URL 地址。不同 region 有不同的service endpoint。endpoint告诉也可告诉 OpenStack service 去哪里访问特定的 servcie。比如，当 Nova 需要访问 Glance 服务去获取 image 时，Nova 通过访问 Keystone 拿到 Glance 的 endpoint，然后通过访问该 endpoint 去获取Glance服务。我们可以通过Endpoint的 region 属性去定义多个 region。Endpoint 该使用对象分为三类：
-•	adminurl 给 admin 用户使用
-•	internalurl 给 OpenStack 内部服务使用来跟别的服务通信
-•	publicurl 其它用户可以访问的地址
+
+-	adminurl 给 admin 用户使用
+-	internalurl 给 OpenStack 内部服务使用来跟别的服务通信
+-	publicurl 可以给外部用户访问
 ![PNG](images/user.png)
 
 
@@ -134,14 +135,13 @@ Keystone分六个services：
 		connection = mysql+pymysql://keystone:KEYSTONE_DBPASS@controller/keystone   
 
 		[token]
-        #token生成的方法
+        #token生成的方法fernet|pkiz|pki|uuid。
 		provider = fernet
 
 
 注：
 
 a. 建议在生产环境中删除admin_token配置，需要删除AdminTokenAuthMiddleware配置，在keystone-paste.ini中可以配置删除pipline中的admin_token_auth即可。
-b. provider生成的方法fernet|pkiz|pki|uuid。
 
 （3）同步数据库
 	su -s /bin/sh -c "keystone-manage db_sync" keystone
@@ -215,20 +215,22 @@ b. provider生成的方法fernet|pkiz|pki|uuid。
 </tr>
 <tr>
 <td>admin</td>
-<td>比 public 多&nbsp;s3_extension</td>
+<td>s3_extension,
+crud_extension,
+admin_service</td>
 <td>keystone.service:admin_app_factory</td>
 <td rowspan="2">
 <p>从 factory 函数来看， admin service 比 public service 多了&nbsp;identity 管理功能， 以及 assignment 的admin/public 区别：</p>
 <p>1. admin 多了对 GET&nbsp;/users/{user_id} 的支持，多了&nbsp;get_all_projects，&nbsp;get_project，get_user_roles 等功能</p>
 <p>2. keystone 对 admin service 提供 admin extensions, 比如 <a href="http://docs.rackspace.com/openstack-extensions/auth/OS-KSADM-admin-devguide/content/Admin_API_Service_Developer_Operations-d1e1357.html" target="_blank">OS-KSADM</a>&nbsp;等；对 public service 提供 public extensions。</p>
-<p><strong>简单总结一下， public service 主要提供了身份验证和目录服务功能；admin service 增加了 tenant、user、role、user group 的管理功能。</strong></p>
+<p><strong>简单总结一下， public service 主要提供了身份验证和目录服务功能；admin service 增加了 project、user、role、user group 的管理功能。</strong></p>
 </td>
 </tr>
 <tr>
 <td>public</td>
 <td>
-<p>sizelimit url_normalize build_auth_context token_auth admin_token_auth xml_body_v2</p>
-<p>json_body ec2_extension user_crud_extension</p>
+<p>user_crud_extension,  public_servic</p>
+
 </td>
 <td>keystone.service:public_app_factory</td>
 </tr>
@@ -242,18 +244,22 @@ b. provider生成的方法fernet|pkiz|pki|uuid。
 
 ###4.2 Keystone与其他模块之间的关联配置
 
-    [keystone_authtoken]
-		auth_uri = http://controller:5000
-		auth_url = http://controller:35357
-		auth_plugin = password
-		project_domain_id = default
-		user_domain_id = default
-		project_name = service
-		username = glance
-		password = GLANCE_PASS
-        memcache_servers = 127.0.0.1:11211
-	[paste_deploy]
-		flavor = keystone
+-	新建用户
+-	新建endpoint
+-	配置文件中修改
+	
+	    [keystone_authtoken]
+			auth_uri = http://controller:5000
+			auth_url = http://controller:35357
+			auth_plugin = password
+			project_domain_id = default
+			user_domain_id = default
+			project_name = service
+			username = glance
+			password = GLANCE_PASS
+	        memcache_servers = 127.0.0.1:11211
+		[paste_deploy]
+			flavor = keystone
 	
 ###4.3 用户的username/password身份验证和token生成
 4.3.1 用户身份认证
