@@ -6,9 +6,7 @@
 Keystone(OpenStack Identity Service)是OpenStack框架中的身份管理服务（Identity service），负责管理身份验证、资源服务目录、基于用户角色的访问控制和服务令牌管理功能。
 Keystone的作用类似一个服务总线，Nova、Glance、Horizon、Swift、Cinder、Neutron等服务都需要通过Keystone来注册其服务的Endpoint（可理解为服务的访问点或者URL），针对这些服务的任何调用都需要经过Keystone的身份认证，并获得服务的Endpoint来进行访问。	
 
-
-![PNG](images/keysone.png)
-
+![PNG](images/keystone.png)
 
 - 用户身份验证
     - 用户身份信息管理和存储
@@ -476,7 +474,7 @@ keystone只提供权限控制，身份验证的功能通过其他身份验证系
 ##背景知识：
 -  Restful && Endpoint
    Restful: Representational State Transfer，
-   Endpoint:
+   Endpoint
 -  WSGI
 -  Oslo
    openstack 的通用库，可以像使用第三方库一样直接import使用
@@ -491,3 +489,7 @@ keystone只提供权限控制，身份验证的功能通过其他身份验证系
 -  paste deployment http://pythonpaste.org/deploy/
 
 -  UUID、PKI对比：https://www.mirantis.com/blog/understanding-openstack-authentication-keystone-pki/
+
+-  openstack文档：http://docs.openstack.org/developer/keystone/
+
+-   http://docs.ocselected.org/openstack-manuals/kilo/admin-guide-cloud/content/keystone-user-management.html
