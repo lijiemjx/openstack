@@ -296,7 +296,9 @@ uuid方式：
 
 PKI/ PKIZ/ Fernet方式:
 
-![PNG](images/pki.png)
+
+![PNG](images/PKI.png)
+
 
 比较各种方式的优缺点：
 
