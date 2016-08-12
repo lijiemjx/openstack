@@ -201,7 +201,11 @@ gAAAAABWfX8riU57aj0tkWdoIL6UdbViV-632pv0rw4zk9igCZXgC-sKwhVuVb-wyMVC9e5TFc 7uPfK
 
 4、	优势
 	
-	（1）不需要进行数据库存储，减少了磁盘IO。因为使用对称加密算法，维护的是一个公共的key repository。所以当涉及到多个keystone node时，uuid、PKI、PKIZ都需要进行数据库存储token，或者使用memcache不断进行keystone node之间的内存数据同步，这些都是非常消耗带宽和存储资源的。若使用fernet方式，由于每个keystone node都使用同一个key repository，所以可以在不同的keystone node上进行验证，而无需进行存储和数据同步。
+	（1）不需要进行数据库存储，减少了磁盘IO。因为使用对称加密算法，维护的是一个公共的key repository。
+	所以当涉及到多个keystone node时，uuid、PKI、PKIZ都需要进行数据库存储token，或者使用memcache不断进行
+	keystone node之间的内存数据同步，这些都是非常消耗带宽和存储资源的。若使用fernet方式，
+	由于每个keystone node都使用同一个key repository，所以可以在不同的keystone node上进行验证，
+	而无需进行存储和数据同步。
 
 5、	劣势
 
